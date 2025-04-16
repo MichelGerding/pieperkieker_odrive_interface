@@ -40,15 +40,13 @@ topics and message types are described.
 The custom message types are defined in the `/msg` directory. The message types are as follows:
 - **OdriveCommand**: This message is used to send commands to the odrive. The message type is defined as follows:
 ```
-string command
-int32 node_id
+string command_type
 float32 value
 ```
 Where:
 - `command`: The command to be sent to the odrive. This can be one of the following:
-  - `P`: Set the position of the odrive in rotations
-  - `V`: Send the velocity of the odrive in rps
-- `node_id`: The id of the node to be controlled. This is an i32 value.
+  - `position`: Set the position of the odrive in rotations
+  - `velocity`: Send the velocity of the odrive in rps
 - `value`: The value to be sent to the node. This is a f32 value.
 
 and finally the `OdriveFeedback` message type is used to send feedback from the odrive. The message type is defined as follows:
