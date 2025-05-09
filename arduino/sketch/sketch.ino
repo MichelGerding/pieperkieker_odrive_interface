@@ -12,10 +12,16 @@
 #define MCP2515_INT 2
 #define MCP2515_CLK_HZ 8000000
 
-#define NUM_ODRIVES 1  // Change to match your number of ODrives
+#define NUM_ODRIVES 6 // Change to match your number of ODrives
 
 MCP2515Class& can_intf = CAN;
 ODriveCAN* odrives[NUM_ODRIVES];
+
+#define STEERING_MIN -0.75
+#define STEERING_MAX 0.75
+
+int STEERING_NODES[] = {0, 1};
+int STEERING_NODES_COUNT = 2;
 
 struct ODriveUserData {
   Heartbeat_msg_t last_heartbeat;
@@ -78,8 +84,12 @@ void setup() {
     pumpEvents(can_intf);
     bool all_ready = true;
     for (int i = 0; i < NUM_ODRIVES; i++) {
+      //Serial.print("Waiting for heartbeat from Odrive ");
+      //Serial.println(i);
       if (!odrive_user_data[i].received_heartbeat) {
         all_ready = false;
+        Serial.print("Missing heartbeat from ID ");
+        Serial.println(i);
         break;
       }
     }
@@ -96,6 +106,15 @@ void setup() {
   }
 
   Serial.println("Ready for Serial Commands: P|O|V <index> <value>");
+}
+
+boolean array_contains(int arr[], int element, int len) {
+  for (int i = 0; i < len; i++) {
+    if (arr[i] == element) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void processSerialCommand(String line) {
@@ -126,10 +145,18 @@ void processSerialCommand(String line) {
 
   switch (cmd) {
     case 'P':
+      if (array_contains(STEERING_NODES , id, STEERING_NODES_COUNT)) {
+        if (val < STEERING_MIN) val = STEERING_MIN;
+        if (val > STEERING_MAX) val = STEERING_MAX;
+      }
+
+      
       odrives[id]->setControllerMode(POSITION_CONTROL_MODE, 3);
       odrives[id]->setPosition(val);
       break;
     case 'V':
+      if (array_contains(STEERING_NODES , id, STEERING_NODES_COUNT)) break;
+      
       odrives[id]->setControllerMode(VELOCITY_CONTROL_MODE, 2);
       odrives[id]->setVelocity(val);
       break;
