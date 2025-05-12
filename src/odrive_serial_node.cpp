@@ -9,15 +9,15 @@
 #include "odrive_interface/msg/odrive_command.hpp"
 #include "odrive_interface/msg/odrive_feedback.hpp"
 
-#define NUM_ODRIVES 1
+#define NUM_ODRIVES 6
 #define BUFFER_SIZE 256
 
 // ODrive IDs for steering and throttle
-static const std::vector<int> steering_odrive_ids = {0};
-static const std::vector<int> throttle_odrive_ids = {0};
+static const std::vector<int> steering_odrive_ids = {0,1};
+static const std::vector<int> throttle_odrive_ids = {2,3,4,5,6};
 
 // Serial port configuration
-static const std::string ODRIVE_SERIAL_PORT_NAME = "/dev/ttyUSB0";
+static const std::string ODRIVE_SERIAL_PORT_NAME = "/dev/ttyACM0";
 static const int ODRIVE_SERIAL_BAUD_RATE = 115200;
 
 using odrive_interface::msg::OdriveCommand;
@@ -160,7 +160,7 @@ private:
 
   void parseFeedback(const std::string& line) {
     std::smatch match;
-    std::regex regex(R"(OD(\d+): Pos=([-\d.]+) Vel=([-\d.]+))");
+    std::regex regex(R"(OD(\d+): Pos=([-\d.]+) Vel=([-\d.]+) Torque=([-\d.]+))");
 
     if (std::regex_search(line, match, regex)) {
       int index = std::stoi(match[1]);
@@ -169,6 +169,7 @@ private:
       OdriveFeedback msg;
       msg.position = std::stof(match[2]);
       msg.velocity = std::stof(match[3]);
+      msg.torque = std::stof(match[4]);
 
       feedback_pubs_[index]->publish(msg);
     }
