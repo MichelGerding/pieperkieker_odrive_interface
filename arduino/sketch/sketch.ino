@@ -23,10 +23,14 @@ ODriveCAN* odrives[NUM_ODRIVES];
 int STEERING_NODES[] = {0, 1};
 int STEERING_NODES_COUNT = 2;
 
+int INVERTED_NODES[] = {4, 5};
+int INVERTED_NODES_COUNT = 2;
+
 struct ODriveUserData {
   Heartbeat_msg_t last_heartbeat;
   bool received_heartbeat = false;
   Get_Encoder_Estimates_msg_t last_feedback;
+  float last_torque = 0;
   bool received_feedback = false;
 };
 
@@ -63,6 +67,10 @@ bool setupCan() {
   return true;
 }
 
+void onTorqueMessage(Get_Torques_msg_t& msg, void* user_data) {
+  ((ODriveUserData*)user_data)->last_torque = msg.Torque_Estimate;
+}
+
 void setup() {
   Serial.begin(115200);
   for (int i = 0; i < 30 && !Serial; i++) delay(100);
@@ -77,6 +85,7 @@ void setup() {
     odrives[i] = new ODriveCAN(wrap_can_intf(can_intf), i); // node_id = i
     odrives[i]->onFeedback(onFeedback, &odrive_user_data[i]);
     odrives[i]->onStatus(onHeartbeat, &odrive_user_data[i]);
+    odrives[i]->onTorques(onTorqueMessage, &odrive_user_data[i]);
   }
 
   Serial.println("Waiting for all ODrives...");
@@ -143,6 +152,10 @@ void processSerialCommand(String line) {
     return;
   }
 
+  if(array_contains(INVERTED_NODES, id, INVERTED_NODES_COUNT)){
+    val *= -1;
+  }
+
   switch (cmd) {
     case 'P':
       if (array_contains(STEERING_NODES , id, STEERING_NODES_COUNT)) {
@@ -150,13 +163,12 @@ void processSerialCommand(String line) {
         if (val > STEERING_MAX) val = STEERING_MAX;
       }
 
-      
       odrives[id]->setControllerMode(POSITION_CONTROL_MODE, 3);
       odrives[id]->setPosition(val);
       break;
     case 'V':
       if (array_contains(STEERING_NODES , id, STEERING_NODES_COUNT)) break;
-      
+
       odrives[id]->setControllerMode(VELOCITY_CONTROL_MODE, 2);
       odrives[id]->setVelocity(val);
       break;
@@ -182,13 +194,21 @@ void loop() {
 
       float pos = odrive_user_data[i].last_feedback.Pos_Estimate;
       float vel = odrive_user_data[i].last_feedback.Vel_Estimate;
+      float torque = odrive_user_data[i].last_torque;
+
+      if(array_contains(INVERTED_NODES, i, INVERTED_NODES_COUNT)){
+        pos *= -1;
+        vel *= -1;
+      }
 
       Serial.print("OD");
       Serial.print(i);
       Serial.print(": Pos=");
       Serial.print(pos, 3);
       Serial.print(" Vel=");
-      Serial.println(vel, 3);
+      Serial.print(vel, 3);
+      Serial.print(" Torque=");
+      Serial.println(torque, 3);
     }
   }
 }
